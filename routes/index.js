@@ -8,11 +8,7 @@ const {
 router.use('/users', userRoutes);
 router.use('/cards', cardRoutes);
 
-router.get('*', (req, res) => {
-  res.status(NOT_FOUND).send({ message: 'Page Not Found' });
-});
-
-router.patch('*', (req, res) => {
+router.all('*', (req, res) => {
   res.status(NOT_FOUND).send({ message: 'Page Not Found' });
 });
 
