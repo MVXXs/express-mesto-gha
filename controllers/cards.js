@@ -63,10 +63,8 @@ const likeCard = (req, res) => {
       return res.status(STATUS_OK).send(card);
     })
     .catch((err) => {
-      if (err.name === 'ValidationError') {
-        res.status(ERROR_CODE).send({
-          message: `${Object.values(err.errors).map((error) => error.message).join(', ')}`,
-        });
+      if (err.name === 'CastError') {
+        res.status(ERROR_CODE).send({ message: 'Bad request' });
       } else {
         res.status(SERVER_ERROR).send({ message: 'Server Error' });
       }
