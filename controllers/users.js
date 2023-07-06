@@ -27,8 +27,12 @@ const getUserById = (req, res) => {
       }
       return res.status(STATUS_OK).send(user);
     })
-    .catch(() => {
-      res.status(SERVER_ERROR).send({ message: 'Server Error' });
+    .catch((err) => {
+      if (err.name === 'CastError') {
+        res.status(ERROR_CODE).send({ message: 'Bad request' });
+      } else {
+        res.status(SERVER_ERROR).send({ message: 'Server Error' });
+      }
     });
 };
 
@@ -54,12 +58,12 @@ const updateUserById = (req, res) => {
   const { name, about } = req.body;
   const id = req.user._id;
 
-  User.findByIdAndUpdate(id, { name, about }, { new: true })
+  User.findByIdAndUpdate(id, { name, about }, { new: true, runValidators: true })
     .then((user) => {
       if (!user) {
         return res.status(NOT_FOUND).send({ message: 'Not found' });
       }
-      return res.status(STATUS_OK).send('The user was successfully updated');
+      return res.status(STATUS_OK).send(user);
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
@@ -81,7 +85,7 @@ const updateUserAvatar = (req, res) => {
       if (!user) {
         return res.status(NOT_FOUND).send({ message: 'Not found' });
       }
-      return res.status(STATUS_OK).send('The user avatar was successfully updated');
+      return res.status(STATUS_OK).send(user);
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {

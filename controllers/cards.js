@@ -43,10 +43,14 @@ const deleteCard = (req, res) => {
       if (!card) {
         return res.status(NOT_FOUND).send({ message: 'Not found' });
       }
-      return res.status(STATUS_OK).send('The card was successfully deleted');
+      return res.status(STATUS_OK).send(card);
     })
-    .catch(() => {
-      res.status(SERVER_ERROR).send({ message: 'Server Error' });
+    .catch((err) => {
+      if (err.name === 'CastError') {
+        res.status(ERROR_CODE).send({ message: 'Bad request' });
+      } else {
+        res.status(SERVER_ERROR).send({ message: 'Server Error' });
+      }
     });
 };
 
@@ -56,7 +60,7 @@ const likeCard = (req, res) => {
       if (!card) {
         return res.status(NOT_FOUND).send({ message: 'Not found' });
       }
-      return res.status(STATUS_OK).send('The like is set.');
+      return res.status(STATUS_OK).send(card);
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
@@ -75,13 +79,11 @@ const dislikeCard = (req, res) => {
       if (!card) {
         return res.status(NOT_FOUND).send({ message: 'Not found' });
       }
-      return res.status(STATUS_OK).send('The like is unset.');
+      return res.status(STATUS_OK).send(card);
     })
     .catch((err) => {
-      if (err.name === 'ValidationError') {
-        res.status(ERROR_CODE).send({
-          message: `${Object.values(err.errors).map((error) => error.message).join(', ')}`,
-        });
+      if (err.name === 'CastError') {
+        res.status(ERROR_CODE).send({ message: 'Bad request' });
       } else {
         res.status(SERVER_ERROR).send({ message: 'Server Error' });
       }

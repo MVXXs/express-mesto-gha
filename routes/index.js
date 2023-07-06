@@ -12,4 +12,8 @@ router.get('*', (req, res) => {
   res.status(NOT_FOUND).send({ message: 'Page Not Found' });
 });
 
+router.patch('*', (req, res) => {
+  res.status(NOT_FOUND).send({ message: 'Page Not Found' });
+});
+
 module.exports = router;
