@@ -43,7 +43,7 @@ const deleteCard = (req, res, next) => {
   Card.findByIdAndDelete(id)
     .then((card) => {
       if (!card) {
-        throw new NotFoundError('Карточка не найдена');
+        next(new NotFoundError('Карточка не найдена'));
       }
       if (!card.owner.equals(req.user._id)) {
         throw new ForbiddenError('Запрещено удалять чужие карточки');
@@ -52,9 +52,9 @@ const deleteCard = (req, res, next) => {
     })
     .catch((err) => {
       if (err.name === 'CastError') {
-        throw new BadRequestError('Bad request');
+        next(new BadRequestError('Bad request'));
       } else {
-        next();
+        next(err);
       }
     });
 };

@@ -10,6 +10,7 @@ const {
   ConflictError, // 409
   // ForbiddenError, // 403
   NotFoundError, // 404
+  UnauthorizedError,
 } = require('../errors/errors');
 
 const JWT_SECRET = 'unique-secret-key';
@@ -148,7 +149,7 @@ const login = (req, res, next) => {
       res.status(STATUS_OK).send({ token });
     })
     .catch(() => {
-      next(new NotFoundError('Неправильный логин или пароль'));
+      next(new UnauthorizedError('Неправильный логин или пароль'));
     });
 };
 
