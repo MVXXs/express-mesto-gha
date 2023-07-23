@@ -8,7 +8,7 @@ const {
 const {
   BadRequestError, // 400
   ConflictError, // 409
-  ForbiddenError, // 403
+  // ForbiddenError, // 403
   NotFoundError, // 404
 } = require('../errors/errors');
 
@@ -142,24 +142,13 @@ const login = (req, res, next) => {
     throw new BadRequestError('Не передан логин или пароль');
   }
 
-  return User.findOne({ email }).select('+password')
+  return User.findUserByCredentials(email, password)
     .then((user) => {
-      if (!user) {
-        throw new ForbiddenError('Пользователь не найден');
-      }
-
-      return bcrypt.compare(password, user.password)
-        .then((matched) => {
-          if (!matched) {
-            throw new ForbiddenError('Неправильный логин или пароль');
-          }
-
-          const token = jwt.sign({ _id: user._id }, JWT_SECRET, { expiresIn: '7d' });
-          return res.status(STATUS_OK).send({ token });
-        })
-        .catch(() => {
-          next();
-        });
+      const token = jwt.sign({ _id: user._id }, JWT_SECRET, { expiresIn: '7d' });
+      res.status(STATUS_OK).send({ token });
+    })
+    .catch(() => {
+      next(new NotFoundError('Неправильный логин или пароль'));
     });
 };
 
