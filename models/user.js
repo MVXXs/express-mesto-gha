@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const isEmail = require('validator/lib/isEmail');
 const isURL = require('validator/lib/isURL');
 const {
-  ForbiddenError, // 403
+  UnauthorizedError, // 403
 } = require('../errors/errors');
 
 const userSchema = new mongoose.Schema({
@@ -24,7 +24,7 @@ const userSchema = new mongoose.Schema({
     default: 'https://pictures.s3.yandex.net/resources/jacques-cousteau_1604399756.png',
     validate: {
       validator: (v) => isURL(v),
-      message: 'Неправильный формат почты',
+      message: 'Неправильный формат ссылки',
     },
   },
   email: {
@@ -39,7 +39,6 @@ const userSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
-    minlength: 6,
     select: false,
   },
 });
@@ -48,13 +47,13 @@ userSchema.statics.findUserByCredentials = function (email, password) {
   return this.findOne({ email }).select('+password')
     .then((user) => {
       if (!user) {
-        return Promise.reject(new ForbiddenError('Неверный логин или пароль'));
+        return Promise.reject(new UnauthorizedError('Неверный логин или пароль'));
       }
 
       return bcrypt.compare(password, user.password)
         .then((matched) => {
           if (!matched) {
-            Promise.reject(new ForbiddenError('Неверный логин или пароль'));
+            Promise.reject(new UnauthorizedError('Неверный логин или пароль'));
           }
 
           return user;

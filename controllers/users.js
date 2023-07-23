@@ -8,9 +8,7 @@ const {
 const {
   BadRequestError, // 400
   ConflictError, // 409
-  // ForbiddenError, // 403
   NotFoundError, // 404
-  UnauthorizedError,
 } = require('../errors/errors');
 
 const JWT_SECRET = 'unique-secret-key';
@@ -22,8 +20,8 @@ const getUsers = (req, res, next) => {
     .then((users) => {
       res.status(STATUS_OK).send(users);
     })
-    .catch(() => {
-      next();
+    .catch((err) => {
+      next(err);
     });
 };
 
@@ -39,9 +37,9 @@ const getUserById = (req, res, next) => {
     })
     .catch((err) => {
       if (err.name === 'CastError') {
-        throw new BadRequestError('Bad request');
+        next(new BadRequestError('Bad request'));
       } else {
-        next();
+        next(err);
       }
     });
 };
@@ -65,14 +63,14 @@ const createUser = (req, res, next) => {
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        throw new BadRequestError(`${Object.values(err.errors)
+        next(new BadRequestError(`${Object.values(err.errors)
           .map((error) => error.message)
-          .join(', ')}`);
+          .join(', ')}`));
       }
       if (err.code === 11000) {
         next(new ConflictError('Такой пользователь уже зарегистрирован'));
       } else {
-        next();
+        next(err);
       }
     });
 };
@@ -90,11 +88,11 @@ const updateUserById = (req, res, next) => {
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        throw new BadRequestError(`${Object.values(err.errors)
+        next(new BadRequestError(`${Object.values(err.errors)
           .map((error) => error.message)
-          .join(', ')}`);
+          .join(', ')}`));
       } else {
-        next();
+        next(err);
       }
     });
 };
@@ -112,44 +110,25 @@ const updateUserAvatar = (req, res, next) => {
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        throw new BadRequestError(`${Object.values(err.errors)
+        next(new BadRequestError(`${Object.values(err.errors)
           .map((error) => error.message)
-          .join(', ')}`);
+          .join(', ')}`));
       } else {
-        next();
+        next(err);
       }
-    });
-};
-
-const deleteUserById = (req, res, next) => {
-  const { id } = req.params;
-
-  User.findByIdAndDelete(id)
-    .then((user) => {
-      if (!user) {
-        throw new NotFoundError('Пользователь не найден');
-      }
-      return res.status(STATUS_OK).send('The user was successfully deleted');
-    })
-    .catch(() => {
-      next();
     });
 };
 
 const login = (req, res, next) => {
   const { email, password } = req.body;
 
-  if (!email || !password) {
-    throw new BadRequestError('Не передан логин или пароль');
-  }
-
   return User.findUserByCredentials(email, password)
     .then((user) => {
       const token = jwt.sign({ _id: user._id }, JWT_SECRET, { expiresIn: '7d' });
       res.status(STATUS_OK).send({ token });
     })
-    .catch(() => {
-      next(new UnauthorizedError('Неправильный логин или пароль'));
+    .catch((err) => {
+      next(err);
     });
 };
 
@@ -163,8 +142,8 @@ const getCurrentUser = (req, res, next) => {
       }
       return res.status(STATUS_OK).send(currentUser);
     })
-    .catch(() => {
-      next();
+    .catch((err) => {
+      next(err);
     });
 };
 
@@ -173,7 +152,6 @@ module.exports = {
   getUserById,
   createUser,
   updateUserById,
-  deleteUserById,
   updateUserAvatar,
   login,
   getCurrentUser,
