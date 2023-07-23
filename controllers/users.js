@@ -54,8 +54,13 @@ const createUser = (req, res, next) => {
     .then((hash) => User.create({
       name, about, avatar, email, password: hash,
     }))
-    .then((user) => {
-      res.status(CREATE_OK).send(user);
+    .then(() => {
+      res.status(CREATE_OK).send({
+        email,
+        name,
+        about,
+        avatar,
+      });
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
@@ -64,7 +69,7 @@ const createUser = (req, res, next) => {
           .join(', ')}`);
       }
       if (err.code === 11000) {
-        throw new ConflictError('Такой пользователь уже зарегистрирован');
+        next(new ConflictError('Такой пользователь уже зарегистрирован'));
       } else {
         next();
       }
