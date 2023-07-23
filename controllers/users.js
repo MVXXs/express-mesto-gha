@@ -1,115 +1,175 @@
+const bcrypt = require('bcrypt');
+const jwt = require('jsonwebtoken');
 const User = require('../models/user');
 const {
-  ERROR_CODE,
-  SERVER_ERROR,
-  NOT_FOUND,
   STATUS_OK,
   CREATE_OK,
-} = require('../utils/errors');
+} = require('../utils/status');
+const {
+  BadRequestError, // 400
+  ConflictError, // 409
+  ForbiddenError, // 403
+  NotFoundError, // 404
+} = require('../errors/errors');
 
-const getUsers = (req, res) => {
+const JWT_SECRET = 'unique-secret-key';
+
+const SALT_ROUNDS = 10;
+
+const getUsers = (req, res, next) => {
   User.find({})
     .then((users) => {
       res.status(STATUS_OK).send(users);
     })
     .catch(() => {
-      res.status(SERVER_ERROR).send({ message: 'Server Error' });
+      next();
     });
 };
 
-const getUserById = (req, res) => {
+const getUserById = (req, res, next) => {
   const { id } = req.params;
 
   User.findById(id)
     .then((user) => {
       if (!user) {
-        return res.status(NOT_FOUND).send({ message: 'Not found' });
+        throw new NotFoundError('Пользователь не найден');
       }
       return res.status(STATUS_OK).send(user);
     })
     .catch((err) => {
       if (err.name === 'CastError') {
-        res.status(ERROR_CODE).send({ message: 'Bad request' });
+        throw new BadRequestError('Bad request');
       } else {
-        res.status(SERVER_ERROR).send({ message: 'Server Error' });
+        next();
       }
     });
 };
 
-const createUser = (req, res) => {
-  const newUserData = req.body;
+const createUser = (req, res, next) => {
+  const {
+    name, about, avatar, email, password,
+  } = req.body;
 
-  return User.create(newUserData)
-    .then((newUser) => {
-      res.status(CREATE_OK).send(newUser);
+  bcrypt.hash(password, SALT_ROUNDS)
+    .then((hash) => User.create({
+      name, about, avatar, email, password: hash,
+    }))
+    .then((user) => {
+      res.status(CREATE_OK).send(user);
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        res.status(ERROR_CODE).send({
-          message: `${Object.values(err.errors).map((error) => error.message).join(', ')}`,
-        });
+        throw new BadRequestError(`${Object.values(err.errors)
+          .map((error) => error.message)
+          .join(', ')}`);
+      }
+      if (err.code === 11000) {
+        throw new ConflictError('Такой пользователь уже зарегистрирован');
       } else {
-        res.status(SERVER_ERROR).send({ message: 'Server Error' });
+        next();
       }
     });
 };
 
-const updateUserById = (req, res) => {
+const updateUserById = (req, res, next) => {
   const { name, about } = req.body;
   const id = req.user._id;
 
   User.findByIdAndUpdate(id, { name, about }, { new: true, runValidators: true })
     .then((user) => {
       if (!user) {
-        return res.status(NOT_FOUND).send({ message: 'Not found' });
+        throw new NotFoundError('Пользователь не найден');
       }
       return res.status(STATUS_OK).send(user);
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        res.status(ERROR_CODE).send({
-          message: `${Object.values(err.errors).map((error) => error.message).join(', ')}`,
-        });
+        throw new BadRequestError(`${Object.values(err.errors)
+          .map((error) => error.message)
+          .join(', ')}`);
       } else {
-        res.status(SERVER_ERROR).send({ message: 'Server Error' });
+        next();
       }
     });
 };
 
-const updateUserAvatar = (req, res) => {
+const updateUserAvatar = (req, res, next) => {
   const { avatar } = req.body;
   const id = req.user._id;
 
   User.findByIdAndUpdate(id, { avatar }, { new: true })
     .then((user) => {
       if (!user) {
-        return res.status(NOT_FOUND).send({ message: 'Not found' });
+        throw new NotFoundError('Пользователь не найден');
       }
       return res.status(STATUS_OK).send(user);
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        res.status(ERROR_CODE).send({
-          message: `${Object.values(err.errors).map((error) => error.message).join(', ')}`,
-        });
+        throw new BadRequestError(`${Object.values(err.errors)
+          .map((error) => error.message)
+          .join(', ')}`);
       } else {
-        res.status(SERVER_ERROR).send({ message: 'Server Error' });
+        next();
       }
     });
 };
 
-const deleteUserById = (req, res) => {
+const deleteUserById = (req, res, next) => {
   const { id } = req.params;
 
   User.findByIdAndDelete(id)
     .then((user) => {
       if (!user) {
-        return res.status(NOT_FOUND).send({ message: 'Not found' });
+        throw new NotFoundError('Пользователь не найден');
       }
       return res.status(STATUS_OK).send('The user was successfully deleted');
     })
     .catch(() => {
-      res.status(SERVER_ERROR).send({ message: 'Server Error' });
+      next();
+    });
+};
+
+const login = (req, res, next) => {
+  const { email, password } = req.body;
+
+  if (!email || !password) {
+    throw new BadRequestError('Не передан логин или пароль');
+  }
+
+  return User.findOne({ email }).select('+password')
+    .then((user) => {
+      if (!user) {
+        throw new ForbiddenError('Пользователь не найден');
+      }
+
+      return bcrypt.compare(password, user.password)
+        .then((matched) => {
+          if (!matched) {
+            throw new ForbiddenError('Неправильный логин или пароль');
+          }
+
+          const token = jwt.sign({ _id: user._id }, JWT_SECRET, { expiresIn: '7d' });
+          return res.status(STATUS_OK).send({ token });
+        })
+        .catch(() => {
+          next();
+        });
+    });
+};
+
+const getCurrentUser = (req, res, next) => {
+  const id = req.user._id;
+
+  User.findById(id)
+    .then((currentUser) => {
+      if (!currentUser) {
+        throw new NotFoundError('Пользователь не найден');
+      }
+      return res.status(STATUS_OK).send(currentUser);
+    })
+    .catch(() => {
+      next();
     });
 };
 
@@ -120,4 +180,6 @@ module.exports = {
   updateUserById,
   deleteUserById,
   updateUserAvatar,
+  login,
+  getCurrentUser,
 };

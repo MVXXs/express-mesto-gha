@@ -1,7 +1,9 @@
 const express = require('express');
+const { errors } = require('celebrate');
 const bodyParser = require('body-parser');
 const mongoose = require('mongoose');
 const routes = require('./routes');
+const errorHandler = require('./middlewares/error-handler');
 
 const { PORT = 3000 } = process.env;
 
@@ -13,14 +15,8 @@ const app = express();
 
 app.use(bodyParser.json());
 
-app.use((req, res, next) => {
-  req.user = {
-    _id: '64a600ab2772c67ba580cb5c',
-  };
-
-  next();
-});
-
 app.use(routes);
+app.use(errors());
+app.use(errorHandler);
 
 app.listen(PORT);
