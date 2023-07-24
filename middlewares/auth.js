@@ -8,6 +8,7 @@ const auth = (req, res, next) => {
 
   if (!authorization || !authorization.startsWith('Bearer ')) {
     next(new UnauthorizedError('Нет доступа'));
+    return;
   }
 
   const token = authorization.replace('Bearer ', '');
@@ -18,6 +19,7 @@ const auth = (req, res, next) => {
     payload = jwt.verify(token, 'unique-secret-key');
   } catch (err) {
     next(new UnauthorizedError('Нет доступа'));
+    return;
   }
 
   req.user = payload;

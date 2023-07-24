@@ -28,9 +28,9 @@ const createCard = (req, res, next) => {
     })
     .catch((err) => {
       if (err.name === 'ValidationError') {
-        throw new BadRequestError(`${Object.values(err.errors)
+        next(new BadRequestError(`${Object.values(err.errors)
           .map((error) => error.message)
-          .join(', ')}`);
+          .join(', ')}`));
       } else {
         next(err);
       }
@@ -43,12 +43,11 @@ const deleteCard = (req, res, next) => {
   Card.findById(id)
     .then((card) => {
       if (!card) {
-        next(new NotFoundError('Карточка не найдена'));
-      }
-      if (!card.owner.equals(req.user._id)) {
+        throw new NotFoundError('Карточка не найдена');
+      } else if (!card.owner.equals(req.user._id)) {
         throw new ForbiddenError('Запрещено удалять чужие карточки');
       } else {
-        card.deleteOne(card)
+        card.deleteOne()
           .then((delCard) => {
             res.status(STATUS_OK).send(delCard);
           })
@@ -76,9 +75,9 @@ const likeCard = (req, res, next) => {
     })
     .catch((err) => {
       if (err.name === 'CastError') {
-        throw new BadRequestError('Bad request');
+        next(new BadRequestError('Bad request'));
       } else {
-        next();
+        next(err);
       }
     });
 };
@@ -93,9 +92,9 @@ const dislikeCard = (req, res, next) => {
     })
     .catch((err) => {
       if (err.name === 'CastError') {
-        throw new BadRequestError('Bad request');
+        next(new BadRequestError('Bad request'));
       } else {
-        next();
+        next(err);
       }
     });
 };

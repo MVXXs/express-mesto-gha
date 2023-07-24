@@ -66,8 +66,7 @@ const createUser = (req, res, next) => {
         next(new BadRequestError(`${Object.values(err.errors)
           .map((error) => error.message)
           .join(', ')}`));
-      }
-      if (err.code === 11000) {
+      } else if (err.code === 11000) {
         next(new ConflictError('Такой пользователь уже зарегистрирован'));
       } else {
         next(err);
